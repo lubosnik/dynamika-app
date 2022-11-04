@@ -1,21 +1,24 @@
-from flask import Flask, request, json, make_response, jsonify
+from flask import Flask, request, make_response, jsonify
+
+from z1 import modelSolution
+from modules.mojeZ1_input import input
 
 app = Flask(__name__)
 
 
-@app.route("/matrices", methods=["GET"])
-def matrices():
+@app.route("/moje", methods=["GET"])
+def get_response():
     if request.method == 'GET':
-        return build_actual_response(jsonify({'name': 'Eric'}))
+        return build_actual_response(jsonify(modelSolution(input)))
 
 
-@app.route("/create", methods=["OPTIONS", "POST"])
-def create():
+@app.route("/new", methods=["OPTIONS", "POST"])
+def post_response():
     if request.method == 'OPTIONS':
         return build_preflight_response()
     elif request.method == 'POST':
         req = request.get_json()
-        return build_actual_response(jsonify({'name': 'Ryso'}))
+        return build_actual_response(jsonify(modelSolution(req)))
 
 
 def build_preflight_response():

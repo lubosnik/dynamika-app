@@ -1,10 +1,10 @@
 import { useState } from "react";
+import { ReactDOM } from "react";
 
 import {
   Button,
   Flex,
   Input,
-  VStack,
   Accordion,
   AccordionItem,
   AccordionButton,
@@ -16,237 +16,499 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
+  Select,
+  Heading,
+  Tooltip,
 } from "@chakra-ui/react";
 
 import { ChevronDownIcon } from "@chakra-ui/icons";
-
-import CrossSection from "./CrossSection";
-import Graph from "./Graph";
+import Structure from "./Structure";
 
 function Zadanie_1() {
-  // CROSS SECTION AND MATERIAL
-  const [material, setMaterial] = useState("");
-  const [width, setWidth] = useState("");
-  const [height, setHeight] = useState("");
-  const [crossSectionSchema, setCrossSectionSchema] = useState(false);
+  // MATERIAL AND CROSS SECTION
+  const sectionSchema = {
+    material: "",
+    width: "",
+    height: "",
+  };
+
+  const [section, setSection] = useState(sectionSchema);
 
   // POINTS
-  const [point_x, setPoint_x] = useState("");
-  const [point_y, setPoint_y] = useState("");
-  const [point_name, setPoint_name] = useState("");
-  const [point_codeNumbers, setPoint_codeNumbers] = useState("");
+  const pointSchema = {
+    x: "",
+    y: "",
+    name: "",
+    codeNumbers: "",
+    dof: "",
+  };
+
+  const [point, setPoint] = useState(pointSchema);
+  const [points, setPoints] = useState([]);
 
   // BARS
-  const [bar_startPoint, setBar_startPoint] = useState("");
-  const [bar_endPoint, setBar_endPoint] = useState("");
-  const [bars, setBars] = useState([]);
-
-  const pointSchema = {
-    x: point_x,
-    y: point_y,
-    name: point_name,
-    codeNumbers: point_codeNumbers,
-  };
-
-  const crossSectionMaterialSchema = {
-    material: material,
-    width: width,
-    height: height,
-  };
 
   const barSchema = {
-    startPoint: bar_startPoint,
-    endPoint: bar_endPoint,
-    name: `${bar_startPoint.name}-${bar_endPoint.name}`,
+    startPoint: "",
+    endPoint: "",
+    name: "",
   };
 
-  const [points, setPoints] = useState([]);
-  const [crossSectionMaterial, setCrossSectionMaterial] = useState([]);
+  const [bar, setBar] = useState(barSchema);
+  const [bars, setBars] = useState([]);
 
-  function addPoint() {
-    setPoints([...points, pointSchema]);
+  // LOADS
+
+  const loadSchema = {
+    bar: "",
+    Q: "",
+    F: "",
+    F_position: "",
+  };
+
+  const [load, setLoad] = useState(loadSchema);
+  const [loads, setLoads] = useState([]);
+
+  function handleLoadChange(e, bar) {
+    const { name, value } = e.target;
+    if (e.target.name === "bar") {
+      setLoad({ ...load, bar: bar.name });
+    } else {
+      setLoad({ ...load, [name]: value });
+    }
+  }
+
+  function handleLoadSubmit(e) {
+    e.preventDefault();
+    setLoads([...loads, load]);
+  }
+
+  function handleBarChange(e, point) {
+    if (e.target.name === "startPoint") {
+      setBar({ ...bar, startPoint: point });
+    } else if (e.target.name === "endPoint") {
+      setBar({ ...bar, endPoint: point });
+    } else if (e.target.name === "name") {
+      setBar({ ...bar, name: e.target.value });
+    }
+  }
+
+  function handleBarSubmit(e) {
+    e.preventDefault();
+    setBars([...bars, bar]);
+  }
+
+  function handleSectionChange(e: Event) {
+    let { name, value } = e.target;
+    if (name === "") {
+      name = "material";
+    }
+    setSection({ ...section, [name]: value });
+  }
+
+  function handlePointChange(e: Event) {
+    let { name, value } = e.target;
+    if (name === "") {
+      name = "dof";
+    }
+    setPoint({ ...point, [name]: value });
+  }
+
+  function handlePointSubmit(e: Event) {
+    e.preventDefault();
+    setPoints([...points, point]);
   }
 
   function removePoint(point) {
     setPoints(points.filter((p) => p !== point));
   }
 
-  function removeBar(point) {
+  function removeBar(bar) {
     setBars(bars.filter((b) => b !== bar));
   }
 
-  function addCrossSectionMaterial() {
-    setCrossSectionMaterial([crossSectionMaterialSchema]);
-    if (width !== "" && height !== "" && material !== "") {
-      setCrossSectionSchema(true);
-    }
+  function removeLoad(load) {
+    setLoads(loads.filter((l) => l !== load));
   }
 
-  function createBar() {
-    setBars([...bars, barSchema]);
+  function bundleState() {
+    const state = {
+      section,
+      points,
+      bars,
+      loads,
+    };
+    return state;
+  }
+
+  function handleCalculation(e) {
+    e.preventDefault();
+    const state = bundleState();
+    fetch("http://127.0.0.1:5000/new", {
+      method: "POST",
+      body: JSON.stringify(state),
+      headers: {
+        "Content-type": "application/json, charset=UTF-8",
+      },
+    })
+      .then((resp) => resp.json())
+      .then((message) => console.log(message));
+  }
+
+  const [tables, setTables] = useState();
+
+  function handleMyStructure(e) {
+    e.preventDefault();
+    fetch("http://127.0.0.1:5000/moje", {
+      method: "GET",
+    })
+      .then((resp) => resp.json())
+      .then((message) => setTables(message));
   }
 
   return (
-    <Flex>
-      <Accordion defaultIndex={[0]} allowMultiple w="400px">
-        {/* Material and cross section */}
-        <AccordionItem>
-          <h2>
-            <AccordionButton>
-              <Box flex="1" textAlign="left">
-                Define Material and Cross Section
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-          </h2>
-          <AccordionPanel pb={4}>
-            <VStack>
+    <>
+      {/* INPUT */}
+      <Flex
+        border="1px solid black"
+        borderRadius="lg"
+        p="10"
+        w="70%"
+        maxW="80rem"
+        mx="auto"
+        direction="column"
+      >
+        <Heading mb={4}>Input</Heading>
+        <Accordion defaultIndex={[0]} allowMultiple w="100%">
+          {/* MATERIAL AND CROSS SECTION */}
+          <AccordionItem>
+            <h2>
+              <AccordionButton>
+                <Box flex="1" textAlign="left">
+                  Define Material and Cross Section
+                </Box>
+                <AccordionIcon />
+              </AccordionButton>
+            </h2>
+            <AccordionPanel pb={4}>
               <HStack gap="1">
-                <Input
-                  placeholder="height"
-                  w="25%"
-                  onChange={(e) => setHeight(e.target.value)}
-                />
-                <Input
-                  placeholder="width"
-                  w="25%"
-                  onChange={(e) => setWidth(e.target.value)}
-                />
-                <Input
-                  placeholder="material"
-                  w="50%"
-                  onChange={(e) => setMaterial(e.target.value)}
-                />
+                <Tooltip label="Cross section height in milimeters">
+                  <Input
+                    placeholder="height"
+                    name="height"
+                    onChange={(e) => {
+                      handleSectionChange(e);
+                    }}
+                  />
+                </Tooltip>
+                <Tooltip label="Cross section width in milimeters">
+                  <Input
+                    placeholder="width"
+                    name="width"
+                    onChange={(e) => {
+                      handleSectionChange(e);
+                    }}
+                  />
+                </Tooltip>
+                <Select
+                  placeholder="Select material"
+                  name="material"
+                  onChange={(e) => {
+                    handleSectionChange(e);
+                  }}
+                >
+                  <option value="C16/20">C16/20</option>
+                  <option value="C20/25">C20/25</option>
+                  <option value="C25/30">C25/30</option>
+                  <option value="C30/37">C30/37</option>
+                  <option value="C35/45">C35/45</option>
+                </Select>
               </HStack>
-              <Button
-                colorScheme="whatsapp"
-                onClick={() => {
-                  addCrossSectionMaterial();
-                }}
-              >
-                Create
-              </Button>
-            </VStack>
-          </AccordionPanel>
-        </AccordionItem>
+            </AccordionPanel>
+          </AccordionItem>
 
-        {/* POINTS */}
-        <AccordionItem>
-          <h2>
-            <AccordionButton>
-              <Box flex="1" textAlign="left">
-                Create Points
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-          </h2>
-          <AccordionPanel pb={4}>
-            <VStack>
+          {/* POINTS */}
+          <AccordionItem>
+            <h2>
+              <AccordionButton>
+                <Box flex="1" textAlign="left">
+                  Create Points
+                </Box>
+                <AccordionIcon />
+              </AccordionButton>
+            </h2>
+            <AccordionPanel pb={4}>
               <HStack gap="1">
-                <Input
-                  placeholder="x"
-                  w="20%"
-                  onChange={(e) => setPoint_x(e.target.value)}
-                />
-                <Input
-                  placeholder="y"
-                  w="20%"
-                  onChange={(e) => setPoint_y(e.target.value)}
-                />
-                <Input
-                  placeholder="name"
-                  w="40%"
-                  onChange={(e) => setPoint_name(e.target.value)}
-                />
-                <Input
-                  placeholder="code numbers"
-                  onChange={(e) => setPoint_codeNumbers(e.target.value)}
-                />
-              </HStack>
-              <HStack gap="1">
-                <Button colorScheme="whatsapp" onClick={() => addPoint()}>
+                <Tooltip label="x coordinate in meters">
+                  <Input
+                    placeholder="x"
+                    name="x"
+                    onChange={(e) => {
+                      handlePointChange(e);
+                    }}
+                  />
+                </Tooltip>
+                <Tooltip label="y coordinate in meters">
+                  <Input
+                    placeholder="y"
+                    name="y"
+                    onChange={(e) => {
+                      handlePointChange(e);
+                    }}
+                  />
+                </Tooltip>
+                <Tooltip label="Point name">
+                  <Input
+                    placeholder="name"
+                    name="name"
+                    onChange={(e) => {
+                      handlePointChange(e);
+                    }}
+                  />
+                </Tooltip>
+                <Tooltip label="3 numbers for each point. Used to locate point in stiffness matrix. Start with 0 e.g. 0,1,2. Next point 3,4,5...">
+                  <Input
+                    placeholder="code numbers"
+                    name="codeNumbers"
+                    onChange={(e) => {
+                      handlePointChange(e);
+                    }}
+                  />
+                </Tooltip>
+                <Select
+                  placeholder="Select dof"
+                  name="dof"
+                  onChange={(e) => {
+                    handlePointChange(e);
+                  }}
+                >
+                  <option value="1,1,1">1,1,1 - free</option>
+                  <option value="0,0,0">0,0,0 - stiff</option>
+                  <option value="1,0,1">1,0,1 - free in 'x' + rot.</option>
+                  <option value="0,1,1">0,1,1 - free in 'y' + rot.</option>
+                  <option value="0,0,1">0,0,1 - rotation</option>
+                </Select>
+
+                <Button
+                  minW="-moz-fit-content"
+                  colorScheme="whatsapp"
+                  onClick={(e) => {
+                    handlePointSubmit(e);
+                  }}
+                >
                   Add Point
                 </Button>
               </HStack>
-            </VStack>
-          </AccordionPanel>
-        </AccordionItem>
+            </AccordionPanel>
+          </AccordionItem>
 
-        {/* BARS */}
-        <AccordionItem>
-          <h2>
-            <AccordionButton>
-              <Box flex="1" textAlign="left">
-                Create Bars
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-          </h2>
-          <AccordionPanel pb={4}>
-            <VStack direction="column">
+          {/* BARS */}
+          <AccordionItem>
+            <h2>
+              <AccordionButton>
+                <Box flex="1" textAlign="left">
+                  Create Bars
+                </Box>
+                <AccordionIcon />
+              </AccordionButton>
+            </h2>
+            <AccordionPanel pb={4}>
               <HStack gap="1">
                 <Menu>
-                  <MenuButton
-                    as={Button}
-                    rightIcon={<ChevronDownIcon />}
-                    variant="outline"
-                  >
-                    {bar_startPoint.name}
-                  </MenuButton>
+                  <Tooltip label="Choose starting point">
+                    <MenuButton
+                      as={Button}
+                      rightIcon={<ChevronDownIcon />}
+                      variant="outline"
+                      minW="-moz-fit-content"
+                    >
+                      point A
+                    </MenuButton>
+                  </Tooltip>
                   <MenuList>
-                    {points.map((point) => (
-                      <MenuItem
-                        key={point.codeNumbers}
-                        onClick={() => setBar_startPoint(point)}
-                      >
-                        {point.name}
-                      </MenuItem>
-                    ))}
+                    {points.map((point) => {
+                      return (
+                        <MenuItem
+                          key={point.x + point.y}
+                          name="startPoint"
+                          onClick={(e) => {
+                            handleBarChange(e, point);
+                          }}
+                        >
+                          {point.name}
+                        </MenuItem>
+                      );
+                    })}
                   </MenuList>
                 </Menu>
 
                 <Menu>
-                  <MenuButton
-                    as={Button}
-                    rightIcon={<ChevronDownIcon />}
-                    variant="outline"
-                  >
-                    {bar_endPoint.name}
-                  </MenuButton>
+                  <Tooltip label="Choose ending point">
+                    <MenuButton
+                      as={Button}
+                      rightIcon={<ChevronDownIcon />}
+                      variant="outline"
+                      minW="-moz-fit-content"
+                    >
+                      point B
+                    </MenuButton>
+                  </Tooltip>
                   <MenuList>
-                    {points.map((point) => (
-                      <MenuItem
-                        key={point.codeNumbers}
-                        onClick={() => setBar_endPoint(point)}
-                      >
-                        {point.name}
-                      </MenuItem>
-                    ))}
+                    {points.map((point) => {
+                      return (
+                        <MenuItem
+                          key={point.x + point.y}
+                          name="endPoint"
+                          onClick={(e) => {
+                            handleBarChange(e, point);
+                          }}
+                        >
+                          {point.name}
+                        </MenuItem>
+                      );
+                    })}
                   </MenuList>
                 </Menu>
+                <Tooltip label="Bar name">
+                  <Input
+                    placeholder="name"
+                    name="name"
+                    onChange={(e) => {
+                      handleBarChange(e, null);
+                    }}
+                  />
+                </Tooltip>
+
+                <Button
+                  colorScheme="whatsapp"
+                  onClick={(e) => {
+                    handleBarSubmit(e);
+                  }}
+                >
+                  Create
+                </Button>
               </HStack>
-              <Button
-                colorScheme="whatsapp"
-                onClick={() => {
-                  createBar();
-                }}
-              >
-                Create
-              </Button>
-            </VStack>
-          </AccordionPanel>
-        </AccordionItem>
-      </Accordion>
-      {crossSectionSchema && (
-        <CrossSection w={width} h={height} material={material} />
-      )}
-      <Graph
+            </AccordionPanel>
+          </AccordionItem>
+
+          {/* LOADS */}
+          <AccordionItem>
+            <h2>
+              <AccordionButton>
+                <Box flex="1" textAlign="left">
+                  Define Loads
+                </Box>
+                <AccordionIcon />
+              </AccordionButton>
+            </h2>
+            <AccordionPanel pb={4}>
+              <HStack gap="1">
+                <Menu>
+                  <Tooltip label="Choose bar">
+                    <MenuButton
+                      as={Button}
+                      rightIcon={<ChevronDownIcon />}
+                      variant="outline"
+                      minW="-moz-fit-content"
+                    >
+                      Bar
+                    </MenuButton>
+                  </Tooltip>
+                  <MenuList>
+                    {bars.map((bar) => {
+                      return (
+                        <MenuItem
+                          key={bar.name + bar.startPoint.x + bar.startPoint.y}
+                          name="bar"
+                          onClick={(e) => {
+                            handleLoadChange(e, bar);
+                          }}
+                        >
+                          {bar.name}
+                        </MenuItem>
+                      );
+                    })}
+                  </MenuList>
+                </Menu>
+                <Tooltip label="F [kN]">
+                  <Input
+                    placeholder="Point load"
+                    name="F"
+                    onChange={(e) => {
+                      handleLoadChange(e, null);
+                    }}
+                  />
+                </Tooltip>
+                <Tooltip label="Choose from 0 to 1. Default is 0.5">
+                  <Input
+                    placeholder="Point load position"
+                    name="F_position"
+                    onChange={(e) => {
+                      handleLoadChange(e, null);
+                    }}
+                  />
+                </Tooltip>
+                <Tooltip label="Q [kN/m]">
+                  <Input
+                    placeholder="Distributed load"
+                    name="Q"
+                    onChange={(e) => {
+                      handleLoadChange(e, null);
+                    }}
+                  />
+                </Tooltip>
+                <Button
+                  colorScheme="whatsapp"
+                  minW="-moz-fit-content"
+                  onClick={(e) => {
+                    handleLoadSubmit(e);
+                  }}
+                >
+                  Add Load
+                </Button>
+              </HStack>
+            </AccordionPanel>
+          </AccordionItem>
+        </Accordion>
+      </Flex>
+      {/* INPUT CHECK */}
+      <Structure
+        section={section}
         points={points}
-        bars={bars}
         removePoint={removePoint}
         removeBar={removeBar}
+        removeLoad={removeLoad}
+        bars={bars}
+        loads={loads}
       />
-    </Flex>
+      <Button
+        onClick={(e) => {
+          handleCalculation(e);
+        }}
+      >
+        OK
+      </Button>
+      <Button
+        onClick={(e) => {
+          handleMyStructure(e);
+        }}
+      >
+        Moje
+      </Button>
+      {tables && (
+        <Flex direction="column">
+          <Flex dangerouslySetInnerHTML={{ __html: tables.modelMatrix }} />
+          <Flex dangerouslySetInnerHTML={{ __html: tables.bc_modelMatrix }} />
+          <Flex dangerouslySetInnerHTML={{ __html: tables.bc_LoadVector }} />
+          <Flex
+            dangerouslySetInnerHTML={{ __html: tables.modelDisplacements }}
+          />
+          <Flex
+            dangerouslySetInnerHTML={{ __html: tables.barInternalForces }}
+          />
+        </Flex>
+      )}
+    </>
   );
 }
 
